@@ -12,10 +12,18 @@ checksum = "3b13c32d80ecc7ab747b80c3784bce54ee8a7a0cc4fbda9bf4cda2cf6fe90854"
 name = "auction"
 version = "0.0.1"
 dependencies = [
+ "auction-bindings",
  "once_cell",
  "rand",
  "uuid",
- "wit-bindgen",
+ "wit-bindgen 0.7.0",
+]
+
+[[package]]
+name = "auction-bindings"
+version = "0.1.0"
+dependencies = [
+ "wit-bindgen 0.6.0",
 ]
 
 [[package]]
@@ -361,6 +369,15 @@ checksum = "29e3ac9b780c7dda0cac7a52a5d6d2d6707cc6e3451c9db209b6c758f40d7acb"
 dependencies = [
  "indexmap",
  "semver",
+]
+
+[[package]]
+name = "wit-bindgen"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad22d93d3f55847ac4b3df31607a26f35231754ef472382319de032770d8b5bf"
+dependencies = [
+ "bitflags 2.3.3",
 ]
 
 [[package]]

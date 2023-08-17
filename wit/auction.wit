@@ -12,7 +12,7 @@ interface api {
   type deadline = u64
 
   record item {
-    item-id: string,
+    item-id: item-id,
     name: string,
     description: string,
     limit-price: float32,
@@ -32,7 +32,7 @@ interface api {
 
   bid: func(bidder-id: bidder-id, item-id: item-id, price: float32) -> bid-result
 
-  close-auction: func(item-id: string) -> option<bidder-id>
+  close-auction: func(item-id: item-id) -> option<bidder-id>
 }
 
 world auction {

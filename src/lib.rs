@@ -1,119 +1,67 @@
+mod auction_logic;
+mod model;
+
 use bindings::*;
-use exports::golem::component::api::*;
+use exports::golem::component::api::{
+    Api, BidResult as WitBidResult, BidderId as WitBidderId, Deadline as WitDeadline,
+    Item as WitItem, ItemId as WitItemId,
+};
 use once_cell::sync::Lazy;
-use std::collections::HashMap;
-use std::time::SystemTime;
-use uuid::Uuid;
+
+use model::*;
 
 struct AuctionImpl;
 
-struct State {
-    bidders: Lazy<HashMap<Uuid, (String, String)>>,
-    items: Lazy<HashMap<Uuid, Item>>,
-    winning_bids: Lazy<HashMap<Uuid, (Uuid, f32)>>,
+struct WitState {
+    state: Lazy<State>,
 }
 
-static mut STATE: State = State {
-    bidders: Lazy::new(|| HashMap::new()),
-    items: Lazy::new(|| HashMap::new()),
-    winning_bids: Lazy::new(|| HashMap::new()),
+static mut STATE: WitState = WitState {
+    state: Lazy::new(|| State::new()),
 };
 
 fn with_state<T>(f: impl FnOnce(&mut State) -> T) -> T {
-    let result = unsafe { f(&mut STATE) };
+    let result = unsafe { f(&mut STATE.state) };
 
     return result;
 }
 
-fn now() -> u64 {
-    SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
-        .as_secs()
-}
-
 // Here, we declare a Rust implementation of the `Auction` trait.
 impl Api for AuctionImpl {
-    fn register_bidder(name: String, address: String) -> BidderId {
-        with_state(|state| {
-            let bidder_id = Uuid::new_v4();
-            state.bidders.insert(bidder_id, (name, address));
-            BidderId {
-                bidder_id: bidder_id.to_string(),
-            }
-        })
+    fn register_bidder(name: String, address: String) -> WitBidderId {
+        with_state(|state| auction_logic::register_bidder(state, name, address).into())
     }
 
     fn list_item(
         name: String,
         description: String,
         limit_price: f32,
-        expiration: Deadline,
-    ) -> ItemId {
+        expiration: WitDeadline,
+    ) -> WitItemId {
         with_state(|state| {
-            let item_id = Uuid::new_v4();
-            state.items.insert(
-                item_id,
-                Item {
-                    item_id: item_id.to_string(),
-                    name,
-                    description,
-                    limit_price,
-                    expiration,
-                },
-            );
-            ItemId {
-                item_id: item_id.to_string(),
-            }
+            auction_logic::list_item(state, name, description, limit_price, expiration.into())
+                .into()
         })
     }
 
-    fn get_available_items() -> Vec<Item> {
+    fn get_available_items() -> Vec<WitItem> {
         with_state(|state| {
-            state
-                .items
-                .values()
-                .filter(|item| item.expiration > now())
-                .cloned()
+            auction_logic::get_available_items(state)
+                .into_iter()
+                .map(|item| item.into())
                 .collect()
         })
     }
 
-    fn bid(bidder_id: BidderId, item_id: ItemId, price: f32) -> BidResult {
+    fn bid(bidder_id: WitBidderId, item_id: WitItemId, price: f32) -> WitBidResult {
         with_state(|state| {
-            let bidder_id = Uuid::parse_str(&bidder_id.bidder_id).unwrap();
-            let item_id = Uuid::parse_str(&item_id.item_id).unwrap();
-            let item = state.items.get(&item_id).unwrap();
-            let bidder = state.bidders.get(&bidder_id).unwrap();
-            let winning_bid = state.winning_bids.get(&item_id);
-
-            if winning_bid.is_none() {
-                state.winning_bids.insert(item_id, (bidder_id, price));
-                return BidResult::Success;
-            }
-
-            let (_, winning_price) = winning_bid.unwrap();
-            if price > *winning_price {
-                state.winning_bids.insert(item_id, (bidder_id, price));
-                return BidResult::Success;
-            }
-
-            BidResult::Failure("Bid too low".to_string())
+            auction_logic::bid(state, bidder_id.into(), item_id.into(), price).into()
         })
     }
 
-    fn close_auction(item_id: String) -> Option<BidderId> {
+    fn close_auction(item_id: WitItemId) -> Option<WitBidderId> {
         with_state(|state| {
-            let item_id = Uuid::parse_str(&item_id).unwrap();
-            let winning_bid = state.winning_bids.get(&item_id);
-            if winning_bid.is_none() {
-                return None;
-            }
-
-            let (bidder_id, _) = winning_bid.unwrap();
-            let bidder_id = bidder_id.to_string();
-            state.winning_bids.remove(&item_id);
-            Some(BidderId { bidder_id })
+            auction_logic::close_auction(state, item_id.into()).map(|bidder_id| bidder_id.into())
         })
     }
 }
