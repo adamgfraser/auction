@@ -3,8 +3,8 @@ use std::time::Duration;
 use uuid::Uuid;
 
 use crate::exports::golem::component::api::{
-    BidResult as WitBidResult, BidderId as WitBidderId, Deadline as WitDeadline, Item as WitItem,
-    ItemId as WitItemId,
+    Auction as WitAuction, AuctionId as WitAuctionId, BidResult as WitBidResult,
+    BidderId as WitBidderId, Deadline as WitDeadline,
 };
 
 #[derive(Clone, Eq, Hash, PartialEq, PartialOrd, Ord)]
@@ -37,30 +37,30 @@ impl Into<WitBidderId> for BidderId {
 }
 
 #[derive(Clone, Eq, Hash, PartialEq, PartialOrd, Ord)]
-pub struct ItemId {
-    pub item_id: Uuid,
+pub struct AuctionId {
+    pub auction_id: Uuid,
 }
 
-impl ItemId {
+impl AuctionId {
     pub fn new() -> Self {
-        ItemId {
-            item_id: Uuid::new_v4(),
+        AuctionId {
+            auction_id: Uuid::new_v4(),
         }
     }
 }
 
-impl From<WitItemId> for ItemId {
-    fn from(wit_item_id: WitItemId) -> Self {
-        ItemId {
-            item_id: Uuid::parse_str(&wit_item_id.item_id).unwrap(),
+impl From<WitAuctionId> for AuctionId {
+    fn from(wit_auction_id: WitAuctionId) -> Self {
+        AuctionId {
+            auction_id: Uuid::parse_str(&wit_auction_id.auction_id).unwrap(),
         }
     }
 }
 
-impl Into<WitItemId> for ItemId {
-    fn into(self) -> WitItemId {
-        WitItemId {
-            item_id: self.item_id.to_string(),
+impl Into<WitAuctionId> for AuctionId {
+    fn into(self) -> WitAuctionId {
+        WitAuctionId {
+            auction_id: self.auction_id.to_string(),
         }
     }
 }
@@ -108,24 +108,24 @@ impl Into<WitDeadline> for Deadline {
 }
 
 #[derive(Clone)]
-pub struct Item {
-    pub item_id: ItemId,
+pub struct Auction {
+    pub auction_id: AuctionId,
     pub name: String,
     pub description: String,
     pub limit_price: f32,
     pub expiration: Deadline,
 }
 
-impl Item {
+impl Auction {
     pub fn new(
-        item_id: ItemId,
+        auction_id: AuctionId,
         name: String,
         description: String,
         limit_price: f32,
         expiration: Deadline,
     ) -> Self {
-        Item {
-            item_id,
+        Auction {
+            auction_id,
             name,
             description,
             limit_price,
@@ -134,10 +134,10 @@ impl Item {
     }
 }
 
-impl From<WitItem> for Item {
-    fn from(wit_item: WitItem) -> Self {
-        Item {
-            item_id: ItemId::from(wit_item.item_id),
+impl From<WitAuction> for Auction {
+    fn from(wit_item: WitAuction) -> Self {
+        Auction {
+            auction_id: AuctionId::from(wit_item.auction_id),
             name: wit_item.name,
             description: wit_item.description,
             limit_price: wit_item.limit_price,
@@ -146,10 +146,10 @@ impl From<WitItem> for Item {
     }
 }
 
-impl Into<WitItem> for Item {
-    fn into(self) -> WitItem {
-        WitItem {
-            item_id: self.item_id.into(),
+impl Into<WitAuction> for Auction {
+    fn into(self) -> WitAuction {
+        WitAuction {
+            auction_id: self.auction_id.into(),
             name: self.name,
             description: self.description,
             limit_price: self.limit_price,
@@ -175,17 +175,15 @@ impl Bidder {
 }
 
 pub struct State {
-    pub bidders: HashMap<BidderId, Bidder>,
-    pub items: HashMap<ItemId, Item>,
-    pub winning_bids: HashMap<ItemId, (BidderId, f32)>,
+    pub auction: Option<Auction>,
+    pub winning_bid: Option<(BidderId, f32)>,
 }
 
 impl State {
     pub fn new() -> Self {
         State {
-            bidders: HashMap::new(),
-            items: HashMap::new(),
-            winning_bids: HashMap::new(),
+            auction: None,
+            winning_bid: None,
         }
     }
 }
