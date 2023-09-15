@@ -2,16 +2,18 @@ mod auction;
 mod auction_registry_logic;
 mod model;
 
+cargo_component_bindings::generate!();
+
 use bindings::*;
 use exports::golem::component::api::{
-    Api, Auction as WitAuction, AuctionId as WitAuctionId, BidderId as WitBidderId,
+    Guest, Auction as WitAuction, AuctionId as WitAuctionId, BidderId as WitBidderId,
     Deadline as WitDeadline,
 };
 use once_cell::sync::Lazy;
 
 use model::*;
 
-struct AuctionImpl;
+struct Component;
 
 struct WitState {
     state: Lazy<State>,
@@ -28,7 +30,7 @@ fn with_state<T>(f: impl FnOnce(&mut State) -> T) -> T {
 }
 
 // Here, we declare a Rust implementation of the `Auction` trait.
-impl Api for AuctionImpl {
+impl Guest for Component {
     fn create_bidder(name: String, address: String) -> WitBidderId {
         with_state(|state| auction_registry_logic::create_bidder(state, name, address).into())
     }
@@ -60,5 +62,3 @@ impl Api for AuctionImpl {
         })
     }
 }
-
-bindings::export!(AuctionImpl);
