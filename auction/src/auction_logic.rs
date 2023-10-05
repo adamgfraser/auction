@@ -7,30 +7,38 @@ pub fn intitialize(state: &mut State, auction: Auction) {
 }
 
 pub fn bid(state: &mut State, bidder_id: BidderId, price: f32) -> BidResult {
+    let auction = state.auction.clone().unwrap();
+    let expiration = auction.expiration;
     let winning_bid = state.winning_bid.clone();
 
-    if winning_bid.is_none() {
-        state.winning_bid = Some((bidder_id, price));
-        return BidResult::Success;
+    if now() >= expiration.deadline {
+        return BidResult::AuctionExpired;
     }
 
-    let (_, winning_price) = winning_bid.unwrap();
-    if price > winning_price {
-        state.winning_bid = Some((bidder_id, price));
-        return BidResult::Success;
+    if price < auction.limit_price {
+        return BidResult::PriceTooLow;
     }
 
-    BidResult::Failure("Bid too low".to_string())
+    if let Some((_, winning_price)) = winning_bid {
+        if price <= winning_price {
+            return BidResult::PriceTooLow;
+        }
+    }
+
+    state.winning_bid = Some((bidder_id, price));
+    BidResult::Success
 }
 
 pub fn close_auction(state: &mut State) -> Option<BidderId> {
+    let auction = state.auction.clone().unwrap();
+    let expiration = auction.expiration;
     let winning_bid = state.winning_bid.clone();
-    if winning_bid.is_none() {
-        return None;
+
+    if now() >= expiration.deadline {
+        return winning_bid.map(|(bidder_id, _)| bidder_id);
     }
 
-    let (bidder_id, _) = winning_bid.unwrap().clone();
-    Some(bidder_id)
+    None
 }
 
 fn now() -> Duration {

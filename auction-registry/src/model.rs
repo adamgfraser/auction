@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 use uuid::Uuid;
 
-use crate::exports::golem::component::api::{
+use crate::exports::golem::template::api::{
     Auction as WitAuction, AuctionId as WitAuctionId, BidderId as WitBidderId,
     Deadline as WitDeadline,
 };
@@ -136,6 +136,7 @@ impl Into<WitAuction> for Auction {
     }
 }
 
+#[allow(dead_code)]
 pub struct Bidder {
     bidder_id: BidderId,
     name: String,

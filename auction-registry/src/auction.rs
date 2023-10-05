@@ -1,86 +1,148 @@
+use reqwest::*;
+use serde::{Deserialize, Serialize};
+use std::env;
+
 use crate::model::*;
 
 pub fn create(auction: Auction) {
-    create_instance(auction.auction_id.clone());
+    create_worker(auction.auction_id.clone());
     let invocation_key = get_invocation_key(auction.auction_id.clone());
-    initialize_instance(auction, invocation_key);
+    initialize_worker(auction, invocation_key);
 }
 
-fn create_instance(auction_id: AuctionId) {
-    let client = reqwest::Client::new();
-    let template_id = "auction";
-    let worker_id = format!("auction-{}", auction_id.auction_id);
+fn create_worker(auction_id: AuctionId) {
+    let client = Client::new();
+    let template_id = env::var("AUCTION_TEMPLATE_ID").unwrap();
     let url = format!(
-        "https://release.api.golem.cloud/v1/templates/{}/workers?worker-name={}",
-        template_id, worker_id
+        "https://release.api.golem.cloud/v1/templates/{}/workers",
+        template_id
     );
-    let token = "token";
-    client
+    let body = CreateWorkerBody::new(format!("auction-{}", auction_id.auction_id));
+    let token = env::var("GOLEM_AUTHORIZATION_TOKEN").unwrap();
+    let response = client
         .post(url)
-        .header("Authorization", token)
+        .json(&body)
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .unwrap();
+    assert!(response.status().is_success());
 }
 
-fn get_invocation_key(auction_id: AuctionId) -> String {
-    let client = reqwest::Client::new();
-    let template_id = "auction";
+fn get_invocation_key(auction_id: AuctionId) -> InvocationKey {
+    let client = Client::new();
+    let template_id = env::var("AUCTION_TEMPLATE_ID").unwrap();
     let worker_id = format!("auction-{}", auction_id.auction_id);
     let url = format!(
         "https://release.api.golem.cloud/v1/templates/{}/workers/{}/key",
         template_id, worker_id
     );
-    let token = "token";
-    client
+    let token = env::var("GOLEM_AUTHORIZATION_TOKEN").unwrap();
+    let response = client
         .post(url)
-        .header("Authorization", token)
-        .send()
-        .unwrap()
-        .text()
-        .unwrap()
-}
-
-fn initialize_instance(auction: Auction, invocation_key: String) {
-    let client = reqwest::Client::new();
-    let template_id = "auction";
-    let worker_id = format!("auction-{}", auction.auction_id.auction_id);
-    let url = format!("https://release.api.golem.cloud/v1/templates/{}/workers/{}/invoke-and-await?invocation-key={}", template_id, worker_id, invocation_key);
-    let token = "token";
-    client
-        .post(url)
-        .json(&auction)
-        .header("Authorization", token)
+        .header("Authorization", format!("Bearer {}", token))
         .send()
         .unwrap();
+    assert!(response.status().is_success());
+    response.json().unwrap()
 }
 
-// Create a new instance
+fn initialize_worker(auction: Auction, invocation_key: InvocationKey) {
+    let client = Client::new();
+    let template_id = env::var("AUCTION_TEMPLATE_ID").unwrap();
+    let worker_id = format!("auction-{}", auction.auction_id.auction_id);
+    let url = format!("https://release.api.golem.cloud/v1/templates/{}/workers/{}/invoke-and-await", template_id, worker_id);
+    let body = InitializeWorkerBody::new(auction);
+    let token = env::var("GOLEM_AUTHORIZATION_TOKEN").unwrap();
+    let function = "golem:template/api/initialize";
+    let query_params = InitializeWorkerQueryParams::new(invocation_key, function.to_string());
+    let response = client
+        .post(url)
+        .json(&body)
+        .header("Authorization", format!("Bearer {}", token))
+        .query(&query_params)
+        .send()
+        .unwrap();
+    assert!(response.status().is_success());
+}
 
-// All endpoints (except for /auth ) requires authorization header Authorization: bearer <token-secret>
+#[derive(Serialize, Deserialize, Debug)]
+struct CreateWorkerBody {
+    name: String,
+    args: Vec<String>,
+    env: Vec<Vec<String>>,
+}
 
-// POST /templates
-// /{template-id}
-// /workers?worker-name={worker-name}&args={args}&env={env}
+impl CreateWorkerBody {
+    fn new(name: String) -> CreateWorkerBody {
+        CreateWorkerBody {
+            name,
+            args: Vec::new(),
+            env: Vec::new(),
+        }
+    }
+}
 
-// Get an invocation key
+#[derive(Serialize, Deserialize, Debug)]
+struct InvocationKey {
+    value: String,
+}
 
-// POST
-// /templates
-// /{template-id}
-// /workers
-// /{worker-name}
-// / key
+#[derive(Serialize, Deserialize, Debug)]
+struct InitializeWorkerBody {
+    params: Vec<InitializeWorkerParams>,
+}
 
-// Invoke a function and wait for its result
+impl InitializeWorkerBody {
+    fn new(auction: Auction) -> InitializeWorkerBody {
+        InitializeWorkerBody {
+            params: vec!(InitializeWorkerParams {
+                auction_id: AuctionIdParam::new(auction.auction_id.clone()),
+                name: auction.name,
+                description: auction.description,
+                limit_price: auction.limit_price,
+                expiration: auction.expiration.deadline.as_secs(),
+            }),
+        }
+    }
+}
 
-// POST
-// /templates
-// /{template-id}
-// /workers
-// /{worker-name}
-// / invoke-and-await?invocation-key={invocation-key}&function={function-name}&calling-convention={calling-convention-type}
+#[derive(Serialize, Deserialize, Debug)]
+struct InitializeWorkerParams {
+    #[serde(rename = "auction-id")]
+    auction_id: AuctionIdParam,
+    name: String,
+    description: String,
+    #[serde(rename = "limit-price")]
+    limit_price: f32,
+    expiration: u64,
+}
 
-// Request body consist of invoke-parameters which is a JSON, and mostly it is a JSON array.
+#[derive(Serialize, Deserialize, Debug)]
+struct AuctionIdParam {
+    #[serde(rename = "auction-id")]
+    auction_id: String,
+}
 
-// Example:
-// [{”product-id” : “G1000”, "name": "t-shirt"}]
+impl AuctionIdParam {
+    fn new(auction_id: AuctionId) -> AuctionIdParam {
+        AuctionIdParam {
+            auction_id: auction_id.auction_id.to_string(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct InitializeWorkerQueryParams {
+    #[serde(rename = "invocation-key")]
+    invocation_key: String,
+    function: String,
+}
+
+impl InitializeWorkerQueryParams {
+    fn new(invocation_key: InvocationKey, function: String) -> InitializeWorkerQueryParams {
+        InitializeWorkerQueryParams {
+            invocation_key: invocation_key.value,
+            function,
+        }
+    }
+}

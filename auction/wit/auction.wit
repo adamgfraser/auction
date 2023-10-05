@@ -1,4 +1,4 @@
-package golem:component
+package golem:template
 
 interface api {
   record bidder-id {
@@ -20,8 +20,9 @@ interface api {
   }
 
   variant bid-result {
+    auction-expired,
+    price-too-low,
     success,
-    failure(string),
   }
 
   initialize: func(auction: auction) -> ()

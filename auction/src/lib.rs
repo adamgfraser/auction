@@ -4,7 +4,7 @@ mod model;
 cargo_component_bindings::generate!();
 
 use bindings::*;
-use exports::golem::component::api::{
+use exports::golem::template::api::{
     Guest, Auction as WitAuction, BidResult as WitBidResult, BidderId as WitBidderId,
 };
 use once_cell::sync::Lazy;

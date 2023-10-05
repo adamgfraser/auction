@@ -1,4 +1,4 @@
-package golem:component
+package golem:template
 
 interface api {
   record bidder-id {

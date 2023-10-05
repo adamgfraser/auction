@@ -5,7 +5,7 @@ mod model;
 cargo_component_bindings::generate!();
 
 use bindings::*;
-use exports::golem::component::api::{
+use exports::golem::template::api::{
     Guest, Auction as WitAuction, AuctionId as WitAuctionId, BidderId as WitBidderId,
     Deadline as WitDeadline,
 };

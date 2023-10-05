@@ -1,8 +1,7 @@
-use std::collections::HashMap;
 use std::time::Duration;
 use uuid::Uuid;
 
-use crate::exports::golem::component::api::{
+use crate::exports::golem::template::api::{
     Auction as WitAuction, AuctionId as WitAuctionId, BidResult as WitBidResult,
     BidderId as WitBidderId, Deadline as WitDeadline,
 };
@@ -10,14 +9,6 @@ use crate::exports::golem::component::api::{
 #[derive(Clone, Eq, Hash, PartialEq, PartialOrd, Ord)]
 pub struct BidderId {
     pub bidder_id: Uuid,
-}
-
-impl BidderId {
-    pub fn new() -> Self {
-        BidderId {
-            bidder_id: Uuid::new_v4(),
-        }
-    }
 }
 
 impl From<WitBidderId> for BidderId {
@@ -41,14 +32,6 @@ pub struct AuctionId {
     pub auction_id: Uuid,
 }
 
-impl AuctionId {
-    pub fn new() -> Self {
-        AuctionId {
-            auction_id: Uuid::new_v4(),
-        }
-    }
-}
-
 impl From<WitAuctionId> for AuctionId {
     fn from(wit_auction_id: WitAuctionId) -> Self {
         AuctionId {
@@ -66,15 +49,17 @@ impl Into<WitAuctionId> for AuctionId {
 }
 
 pub enum BidResult {
+    AuctionExpired,
+    PriceTooLow,
     Success,
-    Failure(String),
 }
 
 impl From<WitBidResult> for BidResult {
     fn from(wit_bid_result: WitBidResult) -> Self {
         match wit_bid_result {
+            WitBidResult::AuctionExpired => BidResult::AuctionExpired,
+            WitBidResult::PriceTooLow => BidResult::PriceTooLow,
             WitBidResult::Success => BidResult::Success,
-            WitBidResult::Failure(reason) => BidResult::Failure(reason),
         }
     }
 }
@@ -82,8 +67,9 @@ impl From<WitBidResult> for BidResult {
 impl Into<WitBidResult> for BidResult {
     fn into(self) -> WitBidResult {
         match self {
+            BidResult::AuctionExpired => WitBidResult::AuctionExpired,
+            BidResult::PriceTooLow => WitBidResult::PriceTooLow,
             BidResult::Success => WitBidResult::Success,
-            BidResult::Failure(reason) => WitBidResult::Failure(reason),
         }
     }
 }
@@ -116,24 +102,6 @@ pub struct Auction {
     pub expiration: Deadline,
 }
 
-impl Auction {
-    pub fn new(
-        auction_id: AuctionId,
-        name: String,
-        description: String,
-        limit_price: f32,
-        expiration: Deadline,
-    ) -> Self {
-        Auction {
-            auction_id,
-            name,
-            description,
-            limit_price,
-            expiration,
-        }
-    }
-}
-
 impl From<WitAuction> for Auction {
     fn from(wit_item: WitAuction) -> Self {
         Auction {
@@ -154,22 +122,6 @@ impl Into<WitAuction> for Auction {
             description: self.description,
             limit_price: self.limit_price,
             expiration: self.expiration.into(),
-        }
-    }
-}
-
-pub struct Bidder {
-    bidder_id: BidderId,
-    name: String,
-    address: String,
-}
-
-impl Bidder {
-    pub fn new(bidder_id: BidderId, name: String, address: String) -> Self {
-        Bidder {
-            bidder_id,
-            name,
-            address,
         }
     }
 }
