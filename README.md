@@ -42,7 +42,7 @@ You will also notice that the metadata includes the signatures of all the functi
 We can upload the template for the auction registry for Golem in the same way:
 
 ```bash
-golem-cli template add --template-name auction_registry-1 auction_registry.wasm
+golem-cli template add --template-name auction-registry-1 auction_registry.wasm
 ```
 
 ```
@@ -79,7 +79,7 @@ The token secret gives the ability to interact with Golem services on your behal
 With this we have everything we need to deploy our auction service. We can create our auction registry work like this:
 
 ```bash
-golem-cli worker add --template-name auction-registry-1 --worker-name auction-registry -1 --env "GOLEM_TOKEN_SECRET"="07db308e-3721-432d-9aa2-0a6390e0781c" --env "AUCTION_TEMPLATE_ID"="69dd184e-1fef-4925-800c-8a0d91ef2ef3"
+golem-cli worker add --template-name auction-registry-1 --worker-name auction-registry-1 --env "GOLEM_TOKEN_SECRET"="07db308e-3721-432d-9aa2-0a6390e0781c" --env "AUCTION_TEMPLATE_ID"="69dd184e-1fef-4925-800c-8a0d91ef2ef3"
 ```
 
 ```
